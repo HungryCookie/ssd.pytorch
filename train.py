@@ -15,6 +15,7 @@ import torch.utils.data as data
 import numpy as np
 import argparse
 
+from tqdm import tqdm
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "1")
@@ -61,8 +62,10 @@ if torch.cuda.is_available():
         print("WARNING: It looks like you have a CUDA device, but aren't " +
               "using CUDA.\nRun with --cuda for optimal training speed.")
         torch.set_default_tensor_type('torch.FloatTensor')
+    _device = 'cuda'
 else:
     torch.set_default_tensor_type('torch.FloatTensor')
+    _device = 'cpu'
 
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
@@ -86,7 +89,8 @@ def train():
         cfg = voc
         dataset = VOCDetection(root=args.dataset_root,
                                transform=SSDAugmentation(cfg['min_dim'],
-                                                         MEANS))
+                                                         MEANS),
+                               target_transform=COCOAnnotationTransform(args.dataset_root))
 
     if args.visdom:
         import visdom
@@ -144,11 +148,11 @@ def train():
 
     data_loader = data.DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate,
-                                  pin_memory=True)
+                                  shuffle=True, collate_fn=detection_collate) #, pin_memory=True
     # create batch iterator
     batch_iterator = iter(data_loader)
-    for iteration in range(args.start_iter, cfg['max_iter']):
+    # loop = tqdm(data_loader, desc='Train', position=0, leave=False)
+    for iteration in tqdm(range(args.start_iter, cfg['max_iter'])):
         if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
             update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
                             'append', epoch_size)
@@ -165,16 +169,21 @@ def train():
         images, targets = next(batch_iterator)
 
         if args.cuda:
-            images = Variable(images.cuda())
-            targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
+            images = torch.Tensor(images.cuda())
+            targets = [Variable(ann.cuda()) for ann in targets]
         else:
-            images = Variable(images)
-            targets = [Variable(ann, volatile=True) for ann in targets]
+            images = torch.Tensor(images)
+            targets = [torch.Tensor(ann) for ann in targets]
+        # images.to(_device)
+        # targets.to(_device)
+
+
         # forward
         t0 = time.time()
         out = net(images)
         # backprop
         optimizer.zero_grad()
+
         loss_l, loss_c = criterion(out, targets)
         loss = loss_l + loss_c
         loss.backward()

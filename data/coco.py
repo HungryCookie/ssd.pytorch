@@ -8,26 +8,13 @@ import torchvision.transforms as transforms
 import cv2
 import numpy as np
 
-COCO_ROOT = osp.join(HOME, 'data/coco/')
+COCO_ROOT = osp.join(HOME, 'PycharmProjects/CenterNet/data/coco/')
 IMAGES = 'images'
 ANNOTATIONS = 'annotations'
 COCO_API = 'PythonAPI'
-INSTANCES_SET = 'instances_{}.json'
+INSTANCES_SET = 'new.json'
 COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-                'train', 'truck', 'boat', 'traffic light', 'fire', 'hydrant',
-                'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
-                'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
-                'giraffe', 'backpack', 'umbrella', 'handbag', 'tie',
-                'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-                'kite', 'baseball bat', 'baseball glove', 'skateboard',
-                'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-                'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-                'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed',
-                'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote',
-                'keyboard', 'cell phone', 'microwave oven', 'toaster', 'sink',
-                'refrigerator', 'book', 'clock', 'vase', 'scissors',
-                'teddy bear', 'hair drier', 'toothbrush')
+                'train', 'truck', 'boat', 'traffic light')
 
 
 def get_label_map(label_file):
@@ -43,8 +30,11 @@ class COCOAnnotationTransform(object):
     """Transforms a COCO annotation into a Tensor of bbox coords and label index
     Initilized with a dictionary lookup of classnames to indexes
     """
-    def __init__(self):
-        self.label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
+    def __init__(self, root=None):
+        if root is not None:
+            self.label_map = get_label_map(osp.join(root, 'coco_labels.txt'))
+        else:
+            self.label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
 
     def __call__(self, target, width, height):
         """
@@ -57,17 +47,20 @@ class COCOAnnotationTransform(object):
         """
         scale = np.array([width, height, width, height])
         res = []
+        # print(target)
         for obj in target:
-            if 'bbox' in obj:
+            if 'bbox' in obj and obj['category_id'] < 11:
                 bbox = obj['bbox']
                 bbox[2] += bbox[0]
                 bbox[3] += bbox[1]
+                # print(self.label_map)
+                # print('Key: ', obj['category_id'])
                 label_idx = self.label_map[obj['category_id']] - 1
                 final_box = list(np.array(bbox)/scale)
                 final_box.append(label_idx)
                 res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]
-            else:
-                print("no bbox problem!")
+            # else:
+            #     print("no bbox problem!")  # useful but
 
         return res  # [[xmin, ymin, xmax, ymax, label_idx], ... ]
 
@@ -83,13 +76,13 @@ class COCODetection(data.Dataset):
         in the target (bbox) and transforms it.
     """
 
-    def __init__(self, root, image_set='trainval35k', transform=None,
+    def __init__(self, root, image_set='train', transform=None,
                  target_transform=COCOAnnotationTransform(), dataset_name='MS COCO'):
         sys.path.append(osp.join(root, COCO_API))
         from pycocotools.coco import COCO
         self.root = osp.join(root, IMAGES, image_set)
         self.coco = COCO(osp.join(root, ANNOTATIONS,
-                                  INSTANCES_SET.format(image_set)))
+                                  INSTANCES_SET))
         self.ids = list(self.coco.imgToAnns.keys())
         self.transform = transform
         self.target_transform = target_transform
