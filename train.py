@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 import torch.nn.init as init
-import torch.utils.data as data
+from torch.utils.data import DataLoader
 import numpy as np
 import argparse
 
@@ -146,13 +146,52 @@ def train():
         iter_plot = create_vis_plot('Iteration', 'Loss', vis_title, vis_legend)
         epoch_plot = create_vis_plot('Epoch', 'Loss', vis_title, vis_legend)
 
-    data_loader = data.DataLoader(dataset, args.batch_size,
+    data_loader = DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
                                   shuffle=True, collate_fn=detection_collate) #, pin_memory=True
     # create batch iterator
     batch_iterator = iter(data_loader)
-    # loop = tqdm(data_loader, desc='Train', position=0, leave=False)
-    for iteration in tqdm(range(args.start_iter, cfg['max_iter'])):
+
+    for epoch in range(20):  # loop over the dataset multiple times
+
+        tqdm.write('Epoch {}'.format(epoch))
+
+        best_loss = 10e10
+        running_loss = 0.0
+        loss_l, loss_c = 0.0, 0.0
+
+        loop = tqdm(data_loader, desc='Train', position=0, leave=False)
+        for images, targets in loop:
+            if args.cuda:
+                images = torch.Tensor(images.cuda())
+                targets = [torch.Tensor(ann.cuda()) for ann in targets]
+            else:
+                images = torch.Tensor(images)
+                targets = [torch.Tensor(ann) for ann in targets]
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs = net(images)
+            loss_l, loss_c = criterion(outputs, targets)
+            loss = loss_l + loss_c
+            loss.backward()
+            optimizer.step()
+
+            # print statistics
+            running_loss += loss.item()
+            loop.set_description("{} Loss: {:.4f}, Loc".format('Train', running_loss / len(loss)))
+
+        torch.save(ssd_net.state_dict(), f'weights/ssd300_COCO_epoch{epoch}.pth')
+        if running_loss < best_loss:
+            torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_best.pth')
+
+        tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
+        tqdm.write("-" * 30)
+
+
+    '''for iteration in tqdm(range(args.start_iter, cfg['max_iter'])):
         if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
             update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
                             'append', epoch_size)
@@ -205,7 +244,7 @@ def train():
             torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_' +
                        repr(iteration) + '.pth')
     torch.save(ssd_net.state_dict(),
-               args.save_folder + '' + args.dataset + '.pth')
+               args.save_folder + '' + args.dataset + '.pth')'''
 
 
 def adjust_learning_rate(optimizer, gamma, step):

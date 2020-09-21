@@ -9,10 +9,12 @@ import cv2
 import numpy as np
 
 COCO_ROOT = osp.join(HOME, 'PycharmProjects/CenterNet/data/coco/')
+# COCO_ROOT = '/content/coco_train'
 IMAGES = 'images'
 ANNOTATIONS = 'annotations'
 COCO_API = 'PythonAPI'
 INSTANCES_SET = 'new.json'
+# INSTANCES_SET = 'train_ssd.json'
 COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'train', 'truck', 'boat', 'traffic light')
 
