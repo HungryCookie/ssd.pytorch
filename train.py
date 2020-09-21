@@ -154,11 +154,13 @@ def train():
 
     for epoch in range(20):  # loop over the dataset multiple times
 
-        tqdm.write('Epoch {}'.format(epoch))
+        # tqdm.write('Epoch {}'.format(epoch))
+        print(f'Epoch #{epoch}')
 
         best_loss = 10e10
         running_loss = 0.0
         loss_l, loss_c = 0.0, 0.0
+        losses = list()
 
         loop = tqdm(data_loader, desc='Train', position=0, leave=False)
         for images, targets in loop:
@@ -176,19 +178,21 @@ def train():
             outputs = net(images)
             loss_l, loss_c = criterion(outputs, targets)
             loss = loss_l + loss_c
+            losses.append(loss.item())
+
             loss.backward()
             optimizer.step()
 
             # print statistics
-            running_loss += loss.item()
-            loop.set_description("{} Loss: {:.4f}, Loc".format('Train', running_loss / len(loss)))
+            running_loss += losses[-1]
+            loop.set_description("{} Loss: {:.4f}, Loc".format('Train', running_loss / len(losses)))
 
         torch.save(ssd_net.state_dict(), f'weights/ssd300_COCO_epoch{epoch}.pth')
         if running_loss < best_loss:
             torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_best.pth')
 
-        tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
-        tqdm.write("-" * 30)
+        # tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
+        # tqdm.write("-" * 30)
 
 
     '''for iteration in tqdm(range(args.start_iter, cfg['max_iter'])):
