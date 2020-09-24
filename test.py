@@ -10,6 +10,7 @@ from torch.autograd import Variable
 from data import VOC_ROOT, VOC_CLASSES as labelmap
 from PIL import Image
 from data import VOCAnnotationTransform, VOCDetection, BaseTransform, VOC_CLASSES
+from data import COCOAnnotationTransform, COCODetection, COCO_CLASSES
 import torch.utils.data as data
 from ssd import build_ssd
 
@@ -84,7 +85,8 @@ def test_voc():
     net.eval()
     print('Finished loading model!')
     # load data
-    testset = VOCDetection(args.voc_root, [('2007', 'test')], None, VOCAnnotationTransform())
+    # testset = VOCDetection(args.voc_root, 'test', None, VOCAnnotationTransform())
+    testset = COCODetection(args.voc_root, 'test', None, COCOAnnotationTransform())
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True
