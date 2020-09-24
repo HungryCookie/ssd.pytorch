@@ -125,6 +125,7 @@ def train():
                           weight_decay=args.weight_decay)
     criterion = MultiBoxLoss(cfg['num_classes'], 0.5, True, 0, True, 3, 0.5,
                              False, args.cuda)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=12, gamma=0.1)
 
     net.train()
     # loss counters
@@ -185,12 +186,15 @@ def train():
 
             # print statistics
             running_loss = np.ma.masked_invalid(losses).sum()
-            loop.set_description("{} Loss: {:.4f}, Loc".format('Train', running_loss / len(losses)))
+            loop.set_description("{} Loss: {:.4f}".format('Train', running_loss / len(losses)))
+
+        scheduler.step()
 
         torch.save(ssd_net.state_dict(), f'weights/ssd300_COCO_epoch{epoch}.pth')
         if running_loss < best_loss:
             torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_best.pth')
 
+        print('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
         # tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
         # tqdm.write("-" * 30)
 
