@@ -15,8 +15,22 @@ ANNOTATIONS = 'annotations'
 COCO_API = 'PythonAPI'
 # INSTANCES_SET = 'new.json'
 INSTANCES_SET = 'train_ssd.json'
-COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-                'train', 'truck', 'boat', 'traffic light')
+COCO_CLASSES = ("Pedestrian", "People", "Bicycle", "Car", "Van",
+                "Truck", "Tricycle", "Awning-tricycle", "Bus", "Motor")
+VISDRONE_LABELS = {
+    0: "Pedestrian",
+    1: "People",
+    2: "Bicycle",
+    3: "Car",
+    4: "Van",
+    5: "Truck",
+    6: "Tricycle",
+    7: "Awning-tricycle",
+    8: "Bus",
+    9: "Motor",
+    # "11": "Others"
+}
+
 
 
 def get_label_map(label_file):
@@ -32,11 +46,11 @@ class COCOAnnotationTransform(object):
     """Transforms a COCO annotation into a Tensor of bbox coords and label index
     Initilized with a dictionary lookup of classnames to indexes
     """
-    def __init__(self, root=None):
-        if root is not None:
-            self.label_map = get_label_map(osp.join(root, 'coco_labels.txt'))
-        else:
-            self.label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
+    # def __init__(self, root=None):
+    #     if root is not None:
+    #         self.label_map = get_label_map(osp.join(root, 'coco_labels.txt'))
+    #     else:
+    #         self.label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
 
     def __call__(self, target, width, height):
         """
@@ -51,13 +65,14 @@ class COCOAnnotationTransform(object):
         res = []
         # print(target)
         for obj in target:
-            if 'bbox' in obj and obj['category_id'] < 11:
+            if 'bbox' in obj and obj['category_id']:
                 bbox = obj['bbox']
                 bbox[2] += bbox[0]
                 bbox[3] += bbox[1]
                 # print(self.label_map)
                 # print('Key: ', obj['category_id'])
-                label_idx = self.label_map[obj['category_id']] - 1
+                # label_idx = self.label_map[obj['category_id']] - 1
+                label_idx = obj['category_id'] - 1
                 final_box = list(np.array(bbox)/scale)
                 final_box.append(label_idx)
                 res += [final_box]  # [xmin, ymin, xmax, ymax, label_idx]

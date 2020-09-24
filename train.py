@@ -148,11 +148,11 @@ def train():
 
     data_loader = DataLoader(dataset, args.batch_size,
                                   num_workers=args.num_workers,
-                                  shuffle=True, collate_fn=detection_collate) #, pin_memory=True
+                                  shuffle=True, collate_fn=detection_collate, pin_memory=True) #
     # create batch iterator
     batch_iterator = iter(data_loader)
 
-    for epoch in range(20):  # loop over the dataset multiple times
+    for epoch in range(cfg['epochs']):  # loop over the dataset multiple times
 
         # tqdm.write('Epoch {}'.format(epoch))
         print(f'Epoch #{epoch}')
