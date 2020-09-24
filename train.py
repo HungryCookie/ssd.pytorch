@@ -184,7 +184,7 @@ def train():
             optimizer.step()
 
             # print statistics
-            running_loss += losses[-1]
+            running_loss = np.ma.masked_invalid(losses).sum()
             loop.set_description("{} Loss: {:.4f}, Loc".format('Train', running_loss / len(losses)))
 
         torch.save(ssd_net.state_dict(), f'weights/ssd300_COCO_epoch{epoch}.pth')
