@@ -193,8 +193,9 @@ def train():
         scheduler.step()
 
         torch.save(ssd_net.state_dict(), f'{args.custom_save_folder}ssd300_COCO_epoch{epoch}.pth')
-        if running_loss < best_loss:
-            torch.save(ssd_net.state_dict(), f'{args.custom_save_folder}ssd300_COCO_best.pth')
+        if running_loss / len(losses) < best_loss:
+            best_loss = running_loss / len(losses)
+            torch.save(ssd_net.state_dict(), f'{args.custom_save_folder}ssd300_{round(best_loss, 3)}_COCO_best.pth')
 
         print('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
         # tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
