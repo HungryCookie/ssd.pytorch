@@ -1,20 +1,16 @@
 from __future__ import print_function
-import sys
 import os
 import argparse
 import torch
-import torch.nn as nn
 import torch.backends.cudnn as cudnn
-import torchvision.transforms as transforms
-from torch.autograd import Variable
-from data import VOC_ROOT, VOC_CLASSES as labelmap
-from PIL import Image
+from data import VOC_ROOT
 from data import VOCAnnotationTransform, VOCDetection, BaseTransform, VOC_CLASSES
 from data import COCOAnnotationTransform, COCODetection, COCO_CLASSES
-import torch.utils.data as data
 from ssd import build_ssd
 
 parser = argparse.ArgumentParser(description='Single Shot MultiBox Detection')
+parser.add_argument('--dataset', default='COCO',
+                    type=str, help='Dataset type (COCO or VOC supported)')
 parser.add_argument('--trained_model', default='weights/ssd_300_VOC0712.pth',
                     type=str, help='Trained state_dict file path to open')
 parser.add_argument('--save_folder', default='eval/', type=str,
@@ -23,7 +19,7 @@ parser.add_argument('--visual_threshold', default=0.6, type=float,
                     help='Final confidence threshold')
 parser.add_argument('--cuda', default=True, type=bool,
                     help='Use cuda to train model')
-parser.add_argument('--voc_root', default=VOC_ROOT, help='Location of VOC root directory')
+parser.add_argument('--data_root', default=VOC_ROOT, help='Location of dataset root directory')
 parser.add_argument('-f', default=None, type=str, help="Dummy arg so we can load in Jupyter Notebooks")
 args = parser.parse_args()
 
@@ -36,7 +32,7 @@ if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
 
-def test_net(save_folder, net, cuda, testset, transform, thresh):
+def test_net(save_folder, net, cuda, testset, transform, thresh, labelmap):
     # dump predictions and assoc. ground truth to text file for now
     filename = save_folder+'test1.txt'
     num_images = len(testset)
@@ -45,7 +41,7 @@ def test_net(save_folder, net, cuda, testset, transform, thresh):
         img = testset.pull_image(i)
         img_id, annotation = testset.pull_anno(i)
         x = torch.from_numpy(transform(img)[0]).permute(2, 0, 1)
-        x = Variable(x.unsqueeze(0))
+        x = x.unsqueeze(0)
 
         with open(filename, mode='a') as f:
             f.write('\nGROUND TRUTH FOR: '+img_id+'\n')
@@ -76,8 +72,7 @@ def test_net(save_folder, net, cuda, testset, transform, thresh):
                             str(score) + ' '+' || '.join(str(c) for c in coords) + '\n')
                 j += 1
 
-
-def test_voc():
+def test_VOC():
     # load net
     num_classes = len(VOC_CLASSES) + 1 # +1 background
     net = build_ssd('test', 300, num_classes) # initialize SSD
@@ -85,7 +80,24 @@ def test_voc():
     net.eval()
     print('Finished loading model!')
     # load data
-    # testset = VOCDetection(args.voc_root, 'test', None, VOCAnnotationTransform())
+    testset = VOCDetection(args.data_root, [('2007', 'test')], None, VOCAnnotationTransform())
+    if args.cuda:
+        net = net.cuda()
+        cudnn.benchmark = True
+    # evaluation
+    test_net(args.save_folder, net, args.cuda, testset,
+             BaseTransform(net.size, (104, 117, 123)),
+             thresh=args.visual_threshold, labelmap=VOC_CLASSES)
+
+
+def test_COCO():
+    # load net
+    num_classes = len(COCO_CLASSES) + 1 # +1 background
+    net = build_ssd('test', 300, num_classes) # initialize SSD
+    net.load_state_dict(torch.load(args.trained_model))
+    net.eval()
+    print('Finished loading model!')
+    # load data
     testset = COCODetection(args.voc_root, 'test', None, COCOAnnotationTransform())
     if args.cuda:
         net = net.cuda()
@@ -93,7 +105,12 @@ def test_voc():
     # evaluation
     test_net(args.save_folder, net, args.cuda, testset,
              BaseTransform(net.size, (104, 117, 123)),
-             thresh=args.visual_threshold)
+             thresh=args.visual_threshold, labelmap=COCO_CLASSES)
 
 if __name__ == '__main__':
-    test_voc()
+    if args.dataset == 'COCO':
+        test_COCO()
+    elif args.dataset == 'VOC':
+        test_VOC()
+    else:
+        print('Desired dataset type is not supported!!!')
