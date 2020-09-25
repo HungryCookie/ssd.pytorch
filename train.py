@@ -52,6 +52,8 @@ parser.add_argument('--visdom', default=False, type=str2bool,
                     help='Use visdom for loss visualization')
 parser.add_argument('--save_folder', default='weights/',
                     help='Directory for saving checkpoint models')
+parser.add_argument('--custom_save_folder', default='weights/',
+                    help='Directory for saving checkpoint models')
 args = parser.parse_args()
 
 
@@ -190,9 +192,9 @@ def train():
 
         scheduler.step()
 
-        torch.save(ssd_net.state_dict(), f'{args.save_folder}ssd300_COCO_epoch{epoch}.pth')
+        torch.save(ssd_net.state_dict(), f'{args.custom_save_folder}ssd300_COCO_epoch{epoch}.pth')
         if running_loss < best_loss:
-            torch.save(ssd_net.state_dict(), f'{args.save_folder}ssd300_COCO_best.pth')
+            torch.save(ssd_net.state_dict(), f'{args.custom_save_folder}ssd300_COCO_best.pth')
 
         print('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
         # tqdm.write('CrossEntropy Loss: {:.4f} | SmoothL1 Loss: {:.4f}'.format(loss_l.item(), loss_c.item()))
