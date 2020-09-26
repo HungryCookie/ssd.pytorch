@@ -39,14 +39,18 @@ def test_net(save_folder, net, cuda, testset, transform, thresh, labelmap):
     for i in range(num_images):
         print('Testing image {:d}/{:d}....'.format(i+1, num_images))
         img = testset.pull_image(i)
-        img_id, annotation = testset.pull_anno(i)
+        annos = testset.pull_anno(i)
+        img_id = annos[0]['image_id']
+        annotation = [(x['bbox'], x['category_id']) for x in annos]
+        # img_id, annotation = testset.pull_anno(i)
         x = torch.from_numpy(transform(img)[0]).permute(2, 0, 1)
         x = x.unsqueeze(0)
 
         with open(filename, mode='a') as f:
             f.write('\nGROUND TRUTH FOR: '+img_id+'\n')
             for box in annotation:
-                f.write('label: '+' || '.join(str(b) for b in box)+'\n')
+                # f.write('label: '+' || '.join(str(b) for b in box)+'\n')
+                f.write(f'label: {labelmap[str(box[1])]}, bbox: {box[0]}')
         if cuda:
             x = x.cuda()
 
@@ -98,7 +102,7 @@ def test_COCO():
     net.eval()
     print('Finished loading model!')
     # load data
-    testset = COCODetection(args.voc_root, 'test', None, COCOAnnotationTransform())
+    testset = COCODetection(args.data_root, 'test', None, COCOAnnotationTransform())
     if args.cuda:
         net = net.cuda()
         cudnn.benchmark = True
